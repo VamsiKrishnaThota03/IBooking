@@ -1,97 +1,59 @@
-const User = require('../models/User');
-// const { body, validationResult } = require('express-validator');
-const bcrypt = require('bcrypt');
-var jwt = require('jsonwebtoken');
 const express = require('express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { jwtSecret } = require('../config');
+const { wrap } = require('../utils/error');
+
 const router = express.Router();
-// var fetchuser = require('../middleware/fetchuser');
+const str = (v) => (typeof v === 'string' ? v.trim() : '');
 
+// ROUTE 1: Create a user: POST /api/auth/register. No login required.
+router.post(
+  '/register',
+  wrap(async (req, res) => {
+    const fields = {
+      username: str(req.body.username),
+      email: str(req.body.email).toLowerCase(),
+      country: str(req.body.country),
+      city: str(req.body.city),
+      phone: str(req.body.phone),
+    };
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const missing = Object.keys(fields).filter((k) => !fields[k]);
+    if (missing.length) return res.status(400).json({ success: false, error: `Missing: ${missing.join(', ')}` });
+    if (!/^\S+@\S+\.\S+$/.test(fields.email)) return res.status(400).json({ success: false, error: 'Enter a valid email' });
+    if (password.length < 6) return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
 
-const JWT_SECRET = 'ThisisIBook$ing';
+    const existing = await User.findOne({ $or: [{ email: fields.email }, { username: fields.username }] });
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'A user with this email or username already exists' });
+    }
 
+    // isAdmin is never taken from the request body.
+    const hash = await bcrypt.hash(password, 10);
+    await User.create({ ...fields, password: hash });
+    return res.status(201).json({ success: true, message: 'User has been created.' });
+  })
+);
 
-// ROUTE 1: Create a User using: POST "/api/auth/register". No login required
-router.post('/register',async(req,res)=>{
-    // console.log("Hello Vamsi!");
-    // res.send("Hello Vamsi!");
-    try {
+// ROUTE 2: Log in: POST /api/auth/login. No login required.
+router.post(
+  '/login',
+  wrap(async (req, res) => {
+    const username = str(req.body.username);
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const user = username ? await User.findOne({ username }) : null;
+    const ok = user && (await bcrypt.compare(password, user.password));
+    if (!ok) return res.status(400).json({ success: false, error: 'Wrong username or password' });
 
-        let user = await User.findOne({ email: req.body.email });
-        if (user) {
-            return res.status(400).json({success, error: "Sorry a user with this email already exists" })
-        }
+    const authtoken = jwt.sign({ id: user.id, isAdmin: user.isAdmin }, jwtSecret, { expiresIn: '7d' });
+    return res.json({
+      success: true,
+      authtoken,
+      user: { _id: user.id, username: user.username, email: user.email, isAdmin: user.isAdmin },
+    });
+  })
+);
 
-
-        const salt = bcrypt.genSaltSync(10);
-        const hash = bcrypt.hashSync(req.body.password, salt);
-    
-        const newUser = new User({
-          ...req.body,
-          password: hash,
-        });
-    
-        await newUser.save();
-        res.status(200).send("User has been created.");
-      } catch (err) {
-        res.status(404).send({"error": err})
-      }
-});
-
-
-// ROUTE 2: Login a User using: POST "/api/auth/login". No login required
-router.post('/login',async(req,res)=>{
-    try {
-        const user = await User.findOne({ username: req.body.username });
-        if (!user) return next(createError(404, "User not found!"));
-    
-        const isPasswordCorrect = await bcrypt.compare(
-          req.body.password,
-          user.password
-        );
-        if (!isPasswordCorrect)
-          return next(createError(400, "Wrong password or username!"));
-    
-        // const token = jwt.sign(
-        //   { id: user._id, isAdmin: user.isAdmin },
-        //   process.env.JWT
-        // );
-
-
-        // const data = {
-        //     id: user._id,
-        //     isAdmin: user.isAdmin
-        //   }
-        //   const token = jwt.sign(
-        //     { id: user._id, isAdmin: user.isAdmin },
-        //     process.env.JWT
-        //   );
-      
-
-    
-        // const { password, isAdmin, ...otherDetails } = user._doc;
-        // res.cookie("access_token", token, {
-        //     httpOnly: true,
-        //   })
-        //   .status(200)
-        //   .json({ details: { ...otherDetails }, isAdmin });
-
-        const data = {
-            user: {
-                id: user._id
-            },
-            isAdmin:{
-                isAdmin: user.isAdmin
-            }
-        }
-        const authtoken = jwt.sign(data, JWT_SECRET);
-        success = true;
-        res.json({ success, authtoken })
-
-      } catch (err) {
-        res.status(404).send({"error": err})
-      }
-})
-
-
-
-module.exports = router
+module.exports = router;

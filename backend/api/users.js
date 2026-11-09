@@ -1,53 +1,42 @@
 const express = require('express');
-const { verifyAdmin, verifyToken, verifyUser } = require('../middleware/verifyToken.js');
+const bcrypt = require('bcrypt');
+const { verifyAdmin, verifyUser } = require('../middleware/verifyToken.js');
 const User = require('../models/User');
+const { wrap } = require('../utils/error');
+
 const router = express.Router();
+const EDITABLE = ['username', 'email', 'country', 'city', 'phone', 'img'];
 
+// GET all users (admin)
+router.get('/', verifyAdmin, wrap(async (req, res) => {
+  res.json(await User.find().select('-password'));
+}));
 
-//GET ALL users
-router.get("/", verifyAdmin, async(req,res,next)=>{
-    try {
-        const users = await User.find();
-        res.status(200).json(users);
-      } catch (err) {
-        next(err);
-      }
-});
+// UPDATE own profile (or admin). isAdmin can't be changed here.
+router.put('/:id', verifyUser, wrap(async (req, res) => {
+  const update = {};
+  EDITABLE.forEach((k) => {
+    if (typeof req.body[k] === 'string') update[k] = req.body[k].trim();
+  });
+  if (typeof req.body.password === 'string' && req.body.password.length >= 6) {
+    update.password = await bcrypt.hash(req.body.password, 10);
+  }
+  const updatedUser = await User.findByIdAndUpdate(req.params.id, { $set: update }, { new: true, runValidators: true }).select('-password');
+  if (!updatedUser) return res.status(404).json({ error: 'User not found' });
+  return res.json(updatedUser);
+}));
 
+// DELETE own account (or admin)
+router.delete('/:id', verifyUser, wrap(async (req, res) => {
+  await User.findByIdAndDelete(req.params.id);
+  res.json('User has been deleted.');
+}));
 
-//UPDATE
-router.put("/:id", verifyUser, async(req,res,next)=>{
-    try {
-        const updatedUser = await User.findByIdAndUpdate(
-          req.params.id,
-          { $set: req.body },
-          { new: true }
-        );
-        res.status(200).json(updatedUser);
-    } catch (err) {
-    next(err);
-    }
-});
-
-//DELETE
-router.delete("/:id", verifyUser, async(req,res,next)=>{
-    try {
-        await User.findByIdAndDelete(req.params.id);
-        res.status(200).json("User has been deleted.");
-      } catch (err) {
-        next(err);
-      }
-});
-
-//GET
-router.get("/:id", verifyUser, async(req,res,next)=>{
-    try {
-        const user = await User.findById(req.params.id);
-        res.status(200).json(user);
-      } catch (err) {
-        next(err);
-      }
-});
-
+// GET one user (self or admin)
+router.get('/:id', verifyUser, wrap(async (req, res) => {
+  const user = await User.findById(req.params.id).select('-password');
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  return res.json(user);
+}));
 
 module.exports = router;

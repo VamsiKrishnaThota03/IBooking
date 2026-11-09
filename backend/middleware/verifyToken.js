@@ -1,46 +1,35 @@
-var jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const JWT_SECRET = 'ThisisIBook$ing';
+const jwt = require('jsonwebtoken');
+const { jwtSecret } = require('../config');
 
-
+// Reads the JWT from the `auth-token` header (or `Authorization: Bearer`).
 const verifyToken = (req, res, next) => {
-    const token = req.header('auth-token');
-    if (!token) {
-      res.status(401).send({ error: "Please authenticate using a valid token" })
-      
-    }
-    try {
-        const data = jwt.verify(token, JWT_SECRET);
-        req.user = data;
-        next();
-    } catch (error) {
-        res.status(401).send({ error: "Please authenticate using a valid token" })
-    }
+  const bearer = (req.header('authorization') || '').replace(/^Bearer\s+/i, '');
+  const token = req.header('auth-token') || bearer;
+  if (!token) {
+    return res.status(401).json({ error: 'Please authenticate using a valid token' });
+  }
+  try {
+    const data = jwt.verify(token, jwtSecret);
+    req.user = { id: data.id, isAdmin: data.isAdmin === true };
+    return next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Please authenticate using a valid token' });
+  }
 };
 
-
+// The user themself or an admin.
 const verifyUser = (req, res, next) => {
-    verifyToken(req, res, next, () => {
-      if (req.user.id === req.params.id || req.user.isAdmin) {
-        next();
-      } else {
-        return next(createError(403, "You are not authorized!"));
-      }
-    });
+  verifyToken(req, res, () => {
+    if (req.user.id === req.params.id || req.user.isAdmin) return next();
+    return res.status(403).json({ error: 'You are not authorized' });
+  });
 };
-
 
 const verifyAdmin = (req, res, next) => {
-    verifyToken(req, res, () => {
-      // console.log(req.user);
-      // console.log(req.user.isAdmin.isAdmin)
-      if (req.user.isAdmin.isAdmin===true) {
-        console.log("xyz")
-        next();
-      } else {
-        res.status(401).send({ error: "You are not authorized23" })
-      }
-    });
+  verifyToken(req, res, () => {
+    if (req.user.isAdmin) return next();
+    return res.status(403).json({ error: 'Admin access required' });
+  });
 };
 
-module.exports = {verifyToken, verifyUser, verifyAdmin};
+module.exports = { verifyToken, verifyUser, verifyAdmin };
