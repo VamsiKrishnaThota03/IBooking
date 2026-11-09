@@ -1,44 +1,29 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { apiRequest } from "../api";
 
-const useFetch = (url) => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+// Fetches `path` from the API (e.g. "/hotels?featured=true"). Pass null to skip.
+const useFetch = (path, initialData = []) => {
+  const [data, setData] = useState(initialData);
+  const [loading, setLoading] = useState(Boolean(path));
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        setError(err);
-      }
-      setLoading(false);
-    };
-    fetchData();
-  }, [url]);
-
-  const reFetch = async () => {
+  const load = useCallback(async () => {
+    if (!path) return;
     setLoading(true);
+    setError(null);
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const result = await response.json();
-      setData(result);
+      setData(await apiRequest(path));
     } catch (err) {
       setError(err);
     }
     setLoading(false);
-  };
+  }, [path]);
 
-  return { data, loading, error, reFetch };
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { data, loading, error, reFetch: load };
 };
 
 export default useFetch;
