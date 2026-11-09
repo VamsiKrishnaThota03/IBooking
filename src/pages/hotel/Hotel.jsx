@@ -4,40 +4,40 @@ import Header from "../../components/header/Header";
 import MailList from "../../components/mailList/MailList";
 import Footer from "../../components/footer/Footer";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faCircleArrowLeft,
-  faCircleArrowRight,
-  faCircleXmark,
-  faLocationDot,
-} from "@fortawesome/free-solid-svg-icons";
-import { useContext, useState } from "react";
+import { faCircleArrowLeft, faCircleArrowRight, faCircleXmark, faLocationDot } from "@fortawesome/free-solid-svg-icons";
+import { useContext, useEffect, useState } from "react";
 import useFetch from "../../hooks/useFetch";
-import { useLocation, useNavigate } from "react-router-dom";
-import { SearchContext } from "../../context/SearchContext";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { SearchContext, nightsBetween } from "../../context/SearchContext";
 import { AuthContext } from "../../context/Authcontext";
 import Reserve from "../../components/reserve/Reserve";
+import { Empty, ErrorMessage, Loading } from "../../components/status/Status";
 
 const Hotel = () => {
-  const location = useLocation();
-  const id = location.pathname.split("/")[2];
+  const { id } = useParams();
   const [slideNumber, setSlideNumber] = useState(0);
   const [open, setOpen] = useState(false);
   const [openModal, setOpenModal] = useState(false);
 
-  const { data, loading, error } = useFetch(`http://localhost:5000/hotels/find/${id}`);
+  const { data, loading, error, reFetch } = useFetch(`/hotels/find/${id}`, null);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-
   const { dates, options } = useContext(SearchContext);
 
-  const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
-  function dayDifference(date1, date2) {
-    const timeDiff = Math.abs(date2.getTime() - date1.getTime());
-    const diffDays = Math.ceil(timeDiff / MILLISECONDS_PER_DAY);
-    return diffDays;
-  }
+  const photos = data?.photos || [];
+  const nights = nightsBetween(dates[0].startDate, dates[0].endDate);
+  const rooms = options.room || 1;
 
-  const days = dayDifference(dates[0].endDate, dates[0].startDate);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+      if (e.key === "ArrowLeft") setSlideNumber((n) => (n === 0 ? photos.length - 1 : n - 1));
+      if (e.key === "ArrowRight") setSlideNumber((n) => (n === photos.length - 1 ? 0 : n + 1));
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, photos.length]);
 
   const handleOpen = (i) => {
     setSlideNumber(i);
@@ -45,108 +45,96 @@ const Hotel = () => {
   };
 
   const handleMove = (direction) => {
-    let newSlideNumber;
-
-    if (direction === "l") {
-      newSlideNumber = slideNumber === 0 ? 5 : slideNumber - 1;
-    } else {
-      newSlideNumber = slideNumber === 5 ? 0 : slideNumber + 1;
-    }
-
-    setSlideNumber(newSlideNumber);
+    const last = photos.length - 1;
+    setSlideNumber((n) => (direction === "l" ? (n === 0 ? last : n - 1) : n === last ? 0 : n + 1));
   };
 
   const handleClick = () => {
-    if (user) {
-      setOpenModal(true);
-    } else {
-      navigate("/login");
-    }
+    if (user) setOpenModal(true);
+    else navigate("/login", { state: { from: `/hotels/${id}` } });
   };
+
   return (
     <div>
       <Navbar />
       <Header type="list" />
-      {loading ? (
-        "loading"
-      ) : (
-        <div className="hotelContainer">
-          {open && (
-            <div className="slider">
-              <FontAwesomeIcon
-                icon={faCircleXmark}
-                className="close"
-                onClick={() => setOpen(false)}
-              />
-              <FontAwesomeIcon
-                icon={faCircleArrowLeft}
-                className="arrow"
-                onClick={() => handleMove("l")}
-              />
-              <div className="sliderWrapper">
-                <img
-                  src={data.photos[slideNumber]}
-                  alt=""
-                  className="sliderImg"
-                />
-              </div>
-              <FontAwesomeIcon
-                icon={faCircleArrowRight}
-                className="arrow"
-                onClick={() => handleMove("r")}
-              />
-            </div>
-          )}
-          <div className="hotelWrapper">
-            <button className="bookNow">Reserve or Book Now!</button>
-            <h1 className="hotelTitle">{data.name}</h1>
-            <div className="hotelAddress">
-              <FontAwesomeIcon icon={faLocationDot} />
-              <span>{data.address}</span>
-            </div>
-            <span className="hotelDistance">
-              Excellent location – {data.distance}m from center
-            </span>
-            <span className="hotelPriceHighlight">
-              Book a stay over ${data.cheapestPrice} at this property and get a
-              free airport taxi
-            </span>
-            <div className="hotelImages">
-              {data.photos?.map((photo, i) => (
-                <div className="hotelImgWrapper" key={i}>
-                  <img
-                    onClick={() => handleOpen(i)}
-                    src={photo}
-                    alt=""
-                    className="hotelImg"
-                  />
+      <main className="hotelContainer container">
+        {loading && <Loading label="Loading property…" />}
+        {error && [400, 404].includes(error.status) && (
+          <Empty title="We couldn't find this property">
+            <Link to="/hotels">Browse all stays</Link>
+          </Empty>
+        )}
+        {error && ![400, 404].includes(error.status) && <ErrorMessage error={error} onRetry={reFetch} />}
+        {data && !loading && (
+          <>
+            {open && photos.length > 0 && (
+              <div className="slider" role="dialog" aria-modal="true" aria-label="Photo viewer">
+                <button type="button" className="close" aria-label="Close photos" onClick={() => setOpen(false)}>
+                  <FontAwesomeIcon icon={faCircleXmark} />
+                </button>
+                <button type="button" className="arrow" aria-label="Previous photo" onClick={() => handleMove("l")}>
+                  <FontAwesomeIcon icon={faCircleArrowLeft} />
+                </button>
+                <div className="sliderWrapper">
+                  <img src={photos[slideNumber]} alt={`${data.name}, ${slideNumber + 1} of ${photos.length}`} className="sliderImg" />
                 </div>
-              ))}
-            </div>
-            <div className="hotelDetails">
-              <div className="hotelDetailsTexts">
-                <h1 className="hotelTitle">{data.title}</h1>
-                <p className="hotelDesc">{data.desc}</p>
+                <button type="button" className="arrow" aria-label="Next photo" onClick={() => handleMove("r")}>
+                  <FontAwesomeIcon icon={faCircleArrowRight} />
+                </button>
               </div>
-              <div className="hotelDetailsPrice">
-                <h1>Perfect for a {days}-night stay!</h1>
-                <span>
-                  Located in the real heart of Krakow, this property has an
-                  excellent location score of 9.8!
-                </span>
-                <h2>
-                  <b>${days * data.cheapestPrice * options.room}</b> ({days}{" "}
-                  nights)
-                </h2>
-                <button onClick={handleClick}>Reserve or Book Now!</button>
+            )}
+            <div className="hotelWrapper">
+              <div className="hotelHead">
+                <div>
+                  <h1 className="hotelTitle">{data.name}</h1>
+                  <div className="hotelAddress">
+                    <FontAwesomeIcon icon={faLocationDot} />
+                    <span>{data.address}</span>
+                  </div>
+                  <span className="hotelDistance">Excellent location – {data.distance}m from center</span>
+                  <span className="hotelPriceHighlight">
+                    Book a stay over ${data.cheapestPrice} at this property and get a free airport taxi
+                  </span>
+                </div>
+                <button type="button" className="btn btn-primary bookNow" onClick={handleClick}>
+                  Reserve or Book Now!
+                </button>
+              </div>
+              <div className="hotelImages">
+                {photos.map((photo, i) => (
+                  <button type="button" className="hotelImgWrapper" key={photo + i} onClick={() => handleOpen(i)} aria-label={`Open photo ${i + 1}`}>
+                    <img src={photo} alt="" className="hotelImg" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+              <div className="hotelDetails">
+                <div className="hotelDetailsTexts">
+                  <h2 className="hotelSubtitle">{data.title}</h2>
+                  <p className="hotelDesc">{data.desc}</p>
+                </div>
+                <aside className="hotelDetailsPrice">
+                  <h3>Perfect for a {nights}-night stay!</h3>
+                  <span>
+                    Located in <span className="hotelCity">{data.city}</span>
+                    {data.rating ? `, rated ${data.rating} out of 5 by guests` : ""}.
+                  </span>
+                  <p className="hotelTotal">
+                    <b>${nights * data.cheapestPrice * rooms}</b> ({nights} night{nights > 1 ? "s" : ""}
+                    {rooms > 1 ? `, ${rooms} rooms` : ""})
+                  </p>
+                  <button type="button" className="btn btn-primary btn-block" onClick={handleClick}>
+                    Reserve or Book Now!
+                  </button>
+                </aside>
               </div>
             </div>
-          </div>
-          <MailList />
-          <Footer />
-        </div>
-      )}
-      {openModal && <Reserve setOpen={setOpenModal} hotelId={id}/>}
+          </>
+        )}
+      </main>
+      <MailList />
+      <Footer />
+      {openModal && <Reserve setOpen={setOpenModal} hotelId={id} />}
     </div>
   );
 };

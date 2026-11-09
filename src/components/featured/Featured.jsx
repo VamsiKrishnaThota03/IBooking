@@ -1,53 +1,41 @@
+import { useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import useFetch from "../../hooks/useFetch";
+import { SearchContext } from "../../context/SearchContext";
+import { ErrorMessage } from "../status/Status";
 import "./featured.css";
 
+const unsplash = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=800&q=60`;
+const CITIES = [
+  { key: "berlin", name: "Berlin", img: unsplash("1560969184-10fe8719e047") },
+  { key: "madrid", name: "Madrid", img: unsplash("1539037116277-4db20889f2d4") },
+  { key: "london", name: "London", img: unsplash("1513635269975-59663e0ac1ad") },
+];
+
 const Featured = () => {
-  const { data, loading, error } = useFetch(
-    "http://localhost:5000/hotels/countByCity?cities=berlin,madrid,london"
-  );
+  const { data, loading, error, reFetch } = useFetch(`/hotels/countByCity?cities=${CITIES.map((c) => c.key).join(",")}`);
+  const search = useContext(SearchContext);
+  const navigate = useNavigate();
+
+  const open = (city) => {
+    const payload = { destination: city.name, dates: search.dates, options: search.options };
+    search.dispatch({ type: "NEW_SEARCH", payload });
+    navigate("/hotels", { state: payload });
+  };
+
+  if (error) return <ErrorMessage error={error} onRetry={reFetch} />;
 
   return (
     <div className="featured">
-      {loading ? (
-        "Loading please wait"
-      ) : (
-        <>
-          <div className="featuredItem">
-            <img
-              src="https://cf.bstatic.com/xdata/images/city/max500/957801.webp?k=a969e39bcd40cdcc21786ba92826063e3cb09bf307bcfeac2aa392b838e9b7a5&o="
-              alt=""
-              className="featuredImg"
-            />
-            <div className="featuredTitles">
-              <h1>Berlin</h1>
-              <h2>{data[0]} properties</h2>
-            </div>
+      {CITIES.map((city, i) => (
+        <button type="button" className="featuredItem" key={city.key} onClick={() => open(city)}>
+          <img src={city.img} alt="" className="featuredImg" loading="lazy" />
+          <div className="featuredTitles">
+            <h3>{city.name}</h3>
+            <span>{loading ? "…" : `${data[i] ?? 0} properties`}</span>
           </div>
-
-          <div className="featuredItem">
-            <img
-              src="https://cf.bstatic.com/xdata/images/city/max500/690334.webp?k=b99df435f06a15a1568ddd5f55d239507c0156985577681ab91274f917af6dbb&o="
-              alt=""
-              className="featuredImg"
-            />
-            <div className="featuredTitles">
-              <h1>Madrid</h1>
-              <h2>{data[1]} properties</h2>
-            </div>
-          </div>
-          <div className="featuredItem">
-            <img
-              src="https://cf.bstatic.com/xdata/images/city/max500/689422.webp?k=2595c93e7e067b9ba95f90713f80ba6e5fa88a66e6e55600bd27a5128808fdf2&o="
-              alt=""
-              className="featuredImg"
-            />
-            <div className="featuredTitles">
-              <h1>London</h1>
-              <h2>{data[2]} properties</h2>
-            </div>
-          </div>
-        </>
-      )}
+        </button>
+      ))}
     </div>
   );
 };

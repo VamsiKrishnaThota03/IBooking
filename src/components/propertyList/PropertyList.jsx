@@ -1,38 +1,33 @@
 import useFetch from "../../hooks/useFetch";
+import { ErrorMessage } from "../status/Status";
 import "./propertyList.css";
 
-const PropertyList = () => {
-  const { data, loading, error } = useFetch("http://localhost:5000/hotels/countByType");
+const unsplash = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=600&q=60`;
+const IMAGES = {
+  hotel: unsplash("1568084680786-a84f91d1153c"),
+  apartment: unsplash("1522708323590-d24dbb6b0267"),
+  resort: unsplash("1520250497591-112f2f40a3f4"),
+  villa: unsplash("1613490493576-7fde63acd811"),
+  cabin: unsplash("1449158743715-0a90ebb6d2d8"),
+};
+const PLACEHOLDER = Object.keys(IMAGES).map((key) => ({ key, type: `${key}s`, count: null }));
 
-  const images = [
-    "https://cf.bstatic.com/xdata/images/xphoto/square300/57584488.webp?k=bf724e4e9b9b75480bbe7fc675460a089ba6414fe4693b83ea3fdd8e938832a6&o=",
-    "https://cf.bstatic.com/static/img/theme-index/carousel_320x240/card-image-apartments_300/9f60235dc09a3ac3f0a93adbc901c61ecd1ce72e.jpg",
-    "https://cf.bstatic.com/static/img/theme-index/carousel_320x240/bg_resorts/6f87c6143fbd51a0bb5d15ca3b9cf84211ab0884.jpg",
-    "https://cf.bstatic.com/static/img/theme-index/carousel_320x240/card-image-villas_300/dd0d7f8202676306a661aa4f0cf1ffab31286211.jpg",
-    "https://cf.bstatic.com/static/img/theme-index/carousel_320x240/card-image-chalet_300/8ee014fcc493cb3334e25893a1dee8c6d36ed0ba.jpg",
-  ];
+const PropertyList = () => {
+  const { data, loading, error, reFetch } = useFetch("/hotels/countByType");
+  if (error) return <ErrorMessage error={error} onRetry={reFetch} />;
+  const items = loading || !Array.isArray(data) || !data.length ? PLACEHOLDER : data;
+
   return (
     <div className="pList">
-      {loading ? (
-        "loading"
-      ) : (
-        <>
-          {data &&
-            images.map((img,i) => (
-              <div className="pListItem" key={i}>
-                <img
-                  src={img}
-                  alt=""
-                  className="pListImg"
-                />
-                <div className="pListTitles">
-                  <h1>{data[i]?.type}</h1>
-                  <h2>{data[i]?.count} {data[i]?.type}</h2>
-                </div>
-              </div>
-            ))}
-        </>
-      )}
+      {items.map((item) => (
+        <div className="pListItem" key={item.key || item.type}>
+          <img src={IMAGES[item.key] || IMAGES.hotel} alt="" className="pListImg" loading="lazy" />
+          <div className="pListTitles">
+            <h3>{item.type}</h3>
+            <span>{item.count === null ? "…" : `${item.count} ${item.count === 1 ? "property" : "properties"}`}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

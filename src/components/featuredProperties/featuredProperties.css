@@ -1,46 +1,63 @@
 .fp {
-  width: 100%;
-  max-width: 1024px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
 }
 
-.fpItem{
-  flex: 1;
-  gap: 10px;
+.fpItem {
   display: flex;
   flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  transition: box-shadow 0.15s, transform 0.15s;
 }
 
-.fpImg{
+.fpItem:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.fpImg {
   width: 100%;
-  height: 250px;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
+  background: #dfe5ee;
 }
 
-.fpName{
-  color: #333;
-  font-weight: bold;
+.fpBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
 }
 
-.fpCity{
-  font-weight: 300;
+.fpName {
+  font-weight: 700;
 }
 
-.fpPrice{
-  font-weight: 500;
+.fpCity {
+  color: var(--muted);
+  text-transform: capitalize;
+  font-size: 0.92rem;
 }
 
-.fpRating>button{
-  background-color: #003580;
-  color: white;
-  border: none;
-  padding: 3px;
-  margin-right: 10px;
-  font-weight: bold;
+.fpPrice {
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
-.fpRating>span{
-  font-size: 14px;
+@media (max-width: 900px) {
+  .fp {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .fp {
+    grid-template-columns: 1fr;
+  }
 }

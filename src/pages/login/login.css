@@ -1,32 +1,103 @@
 .login {
-  height: 100vh;
+  min-height: calc(100vh - 64px);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 32px 16px;
 }
 
 .lContainer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  width: min(420px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: var(--shadow);
 }
 
-.lInput{
-  height: 30px;
-  padding: 10px;
+.lTitle {
+  font-size: 1.6rem;
+}
+
+.lSub {
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.lContainer label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
+.lInput {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.lInput:focus {
+  outline: none;
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(21, 87, 192, 0.18);
 }
 
 .lButton {
-  border: none;
-  padding: 10px 20px;
-  background-color: #0071c2;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  border-radius: 5px;
+  margin-top: 16px;
+  padding: 12px;
 }
 
-.lButton:disabled{
-  background-color: #0071c28c;
-  cursor: not-allowed;
+.lError,
+.lSuccess {
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}
+
+.lError {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.lSuccess {
+  background: #ecfdf3;
+  color: var(--success);
+}
+
+.lFoot {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-top: 8px;
+}
+
+.lRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.lRow > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lRow > div:only-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 420px) {
+  .lRow {
+    grid-template-columns: 1fr;
+  }
+
+  .lContainer {
+    padding: 24px 20px;
+  }
 }

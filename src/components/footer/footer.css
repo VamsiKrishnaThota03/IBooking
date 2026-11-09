@@ -1,23 +1,36 @@
-.footer{
-  width: 100%;
-  width: 1024px;
-  font-size: 12px;
+.footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 40px 0 24px;
+  font-size: 0.88rem;
 }
 
-.fLists{
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 50px;
+.fLists {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
-.fList{
+.fList {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
-.fListItem{
-  margin-bottom: 10px;
-  color: #003580;
-  cursor: pointer;
+.fListItem {
+  margin-bottom: 8px;
+  color: var(--primary-600);
+}
+
+.fText {
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .fLists {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

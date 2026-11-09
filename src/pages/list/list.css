@@ -1,83 +1,102 @@
 .listContainer {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.listWrapper {
-  width: 100%;
-  max-width: 1024px;
-  display: flex;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  align-items: start;
+  padding-top: 24px;
+  padding-bottom: 48px;
 }
 
 .listSearch {
-  flex: 1;
-  background-color: #febb02;
-  padding: 10px;
-  border-radius: 10px;
+  background: var(--accent);
+  padding: 18px;
+  border-radius: var(--radius);
   position: sticky;
-  top: 10px;
-  height: max-content;
+  top: 16px;
 }
 
-.lsTitle{
-  font-size: 20px;
-  color: #555;
-  margin-bottom: 10px;
+.lsTitle {
+  font-size: 1.3rem;
+  margin-bottom: 12px;
 }
 
-.lsItem{
+.lsItem {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 14px;
+  position: relative;
 }
 
-.lsItem>label{
-  font-size: 12px;
+.lsItem > label,
+.lsOptions legend {
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
-.lsItem>input{
-  height: 30px;
+.lsItem > input,
+.lsDates {
+  height: 42px;
   border: none;
-  padding: 5px;
-}
-.lsItem>span{
-  height: 30px;
-  padding: 5px;
-  background-color: white;
-  display: flex;
-  align-items: center;
+  border-radius: 8px;
+  padding: 0 12px;
+  font: inherit;
+  background: #fff;
+  text-align: left;
   cursor: pointer;
 }
 
-.lsOptions{
-  padding: 10px;
+.lsItem > input {
+  cursor: text;
 }
 
-.lsOptionItem{
+.lsCalendar {
+  position: absolute;
+  top: 74px;
+  left: 0;
+  z-index: 5;
+  box-shadow: var(--shadow);
+}
+
+.lsOptions {
+  border: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+
+.lsOptionItem {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
-  color: #555;
-  font-size: 12px;
+  align-items: center;
+  margin: 8px 0;
+  font-size: 0.88rem;
 }
 
-.lsOptionInput{
-  width: 50px;
+.lsOptionItem small {
+  color: #6b5200;
 }
 
-.listSearch>button{
-  padding: 10px;
-  background-color: #0071c2;
-  color: white;
+.lsOptionInput {
+  width: 80px;
+  height: 34px;
   border: none;
-  width: 100%;
-  font-weight: 500;
-  cursor: pointer;
+  border-radius: 6px;
+  padding: 0 8px;
+  font: inherit;
 }
 
-.listResult {
-  flex: 3;
+.listCount {
+  color: var(--muted);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .listContainer {
+    grid-template-columns: 1fr;
+  }
+
+  .listSearch {
+    position: static;
+  }
 }
