@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 # bcrypt ships prebuilt binaries for Alpine/arm64 and x64; build tools are
@@ -9,7 +9,7 @@ RUN apk add --no-cache --virtual .build python3 make g++ \
   && npm install --omit=dev --no-audit --no-fund \
   && apk del .build
 
-FROM node:20-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
