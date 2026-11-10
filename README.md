@@ -7,8 +7,8 @@ A hotel booking web app with a React frontend and an Express + MongoDB REST API 
 ![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
 ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens)
 
-[![CI](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/ci.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/codeql.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/codeql.yml)
+[![CI](https://github.com/VamsiKrishnaThota03/hotel-booking/actions/workflows/ci.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/hotel-booking/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/VamsiKrishnaThota03/hotel-booking/actions/workflows/codeql.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/hotel-booking/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 | Home | Reserving rooms | Mobile |
@@ -70,7 +70,7 @@ IBooking/
 ### Install
 
 ```bash
-git clone https://github.com/VamsiKrishnaThota03/IBooking.git
+git clone https://github.com/VamsiKrishnaThota03/hotel-booking.git
 cd IBooking
 npm install                     # frontend dependencies
 npm --prefix backend install    # backend dependencies
