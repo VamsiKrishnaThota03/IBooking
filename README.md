@@ -7,6 +7,10 @@ A hotel booking web app with a React frontend and an Express + MongoDB REST API 
 ![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
 ![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens)
 
+[![CI](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/ci.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/codeql.yml/badge.svg)](https://github.com/VamsiKrishnaThota03/IBooking/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 | Home | Reserving rooms | Mobile |
 | ---- | --------------- | ------ |
 | <img src="docs/screenshots/home.png" alt="Home page" width="420" /> | <img src="docs/screenshots/reserve.png" alt="Reserve modal" width="420" /> | <img src="docs/screenshots/mobile.png" alt="Mobile home page" width="200" /> |
@@ -150,3 +154,93 @@ Protected routes expect the JWT in an `auth-token` header (or `Authorization: Be
 - The Flights, Car rentals and Airport taxis tabs and the newsletter form are visual only.
 - The JWT is stored in `localStorage`.
 - `npm audit` still reports issues in Create React App's build tooling (`react-scripts` 5) that need a breaking upgrade.
+
+
+## Authorization model
+
+Three tiers, in `backend/middleware/verifyToken.js`:
+
+| Guard | Allows |
+| --- | --- |
+| `verifyToken` | Any caller with a valid JWT (`auth-token` header, or `Authorization: Bearer`) |
+| `verifyUser` | The account owner **or** an admin — used on `/api/users/:id` |
+| `verifyAdmin` | Admins only — every hotel and room write, and listing all users |
+
+Hotel and room **reads** are deliberately anonymous: this is a public booking
+site, and gating the listings would hide the thing the app exists to show.
+
+`isAdmin` is never read from a request body. The register route builds its own
+field list, so posting `{"isAdmin": true}` creates an ordinary account — there
+is a test against real MongoDB asserting exactly that.
+
+A non-admin hitting an admin route gets **403, not 401**. The distinction
+matters: the token is valid, the caller simply is not an admin, and answering
+401 would wrongly suggest that re-authenticating helps.
+
+## Hardening
+
+The backend is split into `app.js` (the Express application) and `index.js`
+(connect, bind, shut down), so tests can drive it on an ephemeral loopback port.
+
+- **helmet** with a deny-all CSP (this is a JSON API; nothing is ever loaded
+  from it as a subresource), `nosniff` and `no-referrer`.
+- **Rate limiting**: a global ceiling, plus a tighter limiter on `/api/auth`
+  keyed on IP **plus the submitted username**, so one attacker behind a shared
+  address cannot lock out everyone else. Successes count as well as failures,
+  so a valid login cannot refill the budget. Public hotel reads are
+  deliberately *not* behind it, and a test asserts that. `trust proxy` is set
+  to exactly one hop, so `X-Forwarded-For` cannot be spoofed to bypass it.
+- **Split health probes.** `GET /api/health` is liveness and never touches
+  Mongo, so a database blip cannot cause a restart loop.
+  `GET /api/health/ready` reports Mongoose's connection state and answers 503
+  with `Retry-After`.
+- **Graceful shutdown** on SIGTERM/SIGINT that drains requests then closes Mongo.
+- Malformed JSON now returns 400 and an oversized body 413, both as JSON.
+
+## Tests
+
+| Suite | Needs a database? | Covers |
+| --- | --- | --- |
+| `backend/test/api.test.js` | No | 401 vs 403 across every guarded route; wrong-key and `alg=none` token rejection; that a `Bearer` header is accepted too; that a user cannot act on another id; full register validation; the auth limiter firing and keying per username; public reads staying unlimited; JSON 404, 400 and 413 |
+| `backend/test/authorization.test.js` | Yes, skips without `TEST_MONGO_URI` | Real-record authorization: a user can read their own account but not another's, cannot edit or delete another (verified untouched afterwards), an admin can list users while an ordinary user cannot, only an admin can create a hotel, a bcrypt hash is persisted rather than plaintext, and `{"isAdmin": true}` in the body does not create an admin |
+
+```bash
+cd backend
+npm test                                                           # 17 tests, no database
+TEST_MONGO_URI=mongodb://127.0.0.1:27017/ibooking_test npm test     # adds 11 more
+```
+
+## Continuous integration
+
+| Job | What it proves |
+| --- | --- |
+| `backend` (Node 20, 22) | The no-database suite |
+| `authorization` | The full suite against a MongoDB 7 service container, with coverage |
+| `bind-address` | Reads `ss -ltn` on the running server: no `0.0.0.0:5000` listener by default, a loopback one present, readiness green, public listings readable anonymously while an anonymous hotel POST gets 401, clean `SIGTERM`, and `HOST=0.0.0.0` still honoured |
+| `frontend` | Jest + Testing Library tests and a production build |
+| `docker` | The image builds and refuses to start without `JWT_SECRET` |
+
+CodeQL runs weekly and on every push; Dependabot groups weekly patch/minor
+bumps per package.
+
+## Docker
+
+```bash
+printf 'MONGO_PASSWORD=%s\nJWT_SECRET=%s\n' \
+  "$(openssl rand -hex 16)" "$(openssl rand -hex 32)" > .env
+
+docker compose up --build
+docker compose exec api node seed.js   # sample hotels and rooms
+```
+
+MongoDB and the API both publish to `127.0.0.1` only, so neither is reachable
+from your network, and Compose fails fast with a named error if either variable
+is missing.
+
+## Known limitations
+
+- Rate limit counters live in process memory, so the ceilings are per instance.
+  Scaling past one would need a shared store (Redis).
+- There is no payment step; "reserve" marks the room's dates unavailable.
+- `isAdmin` can only be set directly in the database, which is deliberate —
+  there is no self-service path to admin.

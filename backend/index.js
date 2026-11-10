@@ -1,34 +1,32 @@
-const express = require('express');
-const cors = require('cors');
-const { port, host, corsOrigins } = require('./config');
+const mongoose = require('mongoose');
+const { port, host } = require('./config');
 const connectToMongo = require('./db');
-
-const app = express();
-app.disable('x-powered-by');
-app.use(cors({ origin: corsOrigins }));
-app.use(express.json({ limit: '100kb' }));
-
-app.get('/api/health', (req, res) => res.json({ ok: true }));
-app.use('/api/auth', require('./api/auth.js'));
-app.use('/api/users', require('./api/users.js'));
-app.use('/api/hotels', require('./api/hotel.js'));
-app.use('/api/rooms', require('./api/rooms.js'));
-
-app.use((req, res) => res.status(404).json({ error: 'Not found' }));
-
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  const status = err.status || (err.name === 'CastError' ? 400 : err.name === 'ValidationError' ? 400 : 500);
-  if (status >= 500) console.error(err);
-  const message = err.name === 'CastError' ? 'Invalid id' : err.message;
-  res.status(status).json({ error: status >= 500 ? 'Something went wrong' : message });
-});
+const { createApp } = require('./app');
 
 connectToMongo()
   .then(() => {
-    app.listen(port, host, () => {
+    const server = createApp().listen(port, host, () => {
       console.log(`iBooking backend listening at http://${host}:${port}`);
     });
+
+    // Drain in-flight requests and close the Mongo connection when the
+    // platform replaces the container, so a deploy does not surface as 502s or
+    // leaked connections.
+    const shutdown = (signal) => {
+      console.log(`${signal} received, shutting down`);
+      server.close(async () => {
+        try {
+          await mongoose.connection.close();
+        } catch {
+          // Already closed; nothing useful to do here.
+        }
+        process.exit(0);
+      });
+      setTimeout(() => process.exit(1), 10_000).unref();
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   })
   .catch((err) => {
     console.error('MongoDB connection failed:', err.message);
